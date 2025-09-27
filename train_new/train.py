@@ -83,6 +83,19 @@ def train(args):
     if args.loadpath is not None:
         state_dict = torch.load(args.loadpath, map_location=device)
         load_state_dict(model, state_dict)
+    
+    # if args.loadpath is not None:
+    #     ckpt = torch.load(args.loadpath, map_location=device)
+    #     model.load_state_dict(ckpt["model"])
+    #     optimizer.load_state_dict(ckpt["optimizer"])
+    #     scheduler.load_state_dict(ckpt["scheduler"])
+    #     start_epoch = ckpt["epoch"]
+    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    # else:
+    #     start_epoch = 0
+    #     best_miou = float("-inf")
+
 
     # -------------------- Logging/TensorBoard --------------------
     os.makedirs(args.result_dir, exist_ok=True)
@@ -97,7 +110,7 @@ def train(args):
     best_miou = float("-inf")
     eps = 1e-6
 
-    for epoch in range(args.epochs):
+    for epoch in range(72,args.epochs):
         model.train()
         total_loss = 0.0
         num_steps = 0  # 에폭 내 배치 수
@@ -222,7 +235,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset")    # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--loadpath", type=str, help="Path to pretrained model",
-                        default="/content/drive/MyDrive/KADIF/result/DDRNet_4/mode_best.pth")
+                        default="/content/drive/MyDrive/KADIF/result/DDRNet_4/model_best.pth")
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_4_2")   # -v /mnt/d/KADIF:/workspace/result \
     parser.add_argument("--lr", type=float, default=5e-4)
