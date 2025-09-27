@@ -106,10 +106,22 @@ def train(args):
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
     # scheduler = WarmupPolyEpochLR(optimizer, total_epochs=args.epochs, warmup_epochs=5, warmup_ratio=5e-4)
 
+    # if args.loadpath is not None:
+    #     # map_location = {f'cuda:{0}': f'cuda:{local_rank }'}
+    #     state_dict = torch.load(args.loadpath, map_location=device)
+    #     load_state_dict(model, state_dict)
+    
     if args.loadpath is not None:
-        # map_location = {f'cuda:{0}': f'cuda:{local_rank }'}
-        state_dict = torch.load(args.loadpath, map_location=device)
-        load_state_dict(model, state_dict)
+        ckpt = torch.load(args.loadpath, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        scheduler.load_state_dict(ckpt["scheduler"])
+        start_epoch = ckpt["epoch"]
+        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    else:
+        start_epoch = 0
+        best_miou = float("-inf")
 
     # -------------------- Logging/TensorBoard --------------------
     writer = None
@@ -127,7 +139,7 @@ def train(args):
     best_miou = float("-inf")
     eps = 1e-6
 
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch,args.epochs):
         model.train()
         # train_sampler.set_epoch(epoch)
         total_loss = 0.0
@@ -242,6 +254,26 @@ def train(args):
             torch.save(_get_state_dict(model), os.path.join(args.result_dir, "model_best.pth"))
 
         # dist.barrier()  # 다음 epoch 동기화
+        # ===== Save checkpoint (best or latest) =====
+        ckpt = {
+            "epoch": epoch + 1,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "best_miou": best_miou
+        }
+
+        # always save latest
+        torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_latest.pth"))
+
+        # save best separately
+        if (miou > best_miou + eps) or (abs(miou - best_miou) <= eps and (epoch + 1) > 0):
+            best_miou = miou
+            best_epoch = epoch + 1
+            ckpf = os.path.join(args.result_dir, f"model_best_e{best_epoch}_miou{best_miou:.4f}.pth")
+            torch.save(ckpt, ckpf)
+            torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_best.pth"))
+
 
     if writer is not None:
         writer.close()

@@ -80,21 +80,21 @@ def train(args):
 #     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
 
-    if args.loadpath is not None:
-        state_dict = torch.load(args.loadpath, map_location=device)
-        load_state_dict(model, state_dict)
-    
     # if args.loadpath is not None:
-    #     ckpt = torch.load(args.loadpath, map_location=device)
-    #     model.load_state_dict(ckpt["model"])
-    #     optimizer.load_state_dict(ckpt["optimizer"])
-    #     scheduler.load_state_dict(ckpt["scheduler"])
-    #     start_epoch = ckpt["epoch"]
-    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
-    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
-    # else:
-    #     start_epoch = 0
-    #     best_miou = float("-inf")
+    #     state_dict = torch.load(args.loadpath, map_location=device)
+    #     load_state_dict(model, state_dict)
+    
+    if args.loadpath is not None:
+        ckpt = torch.load(args.loadpath, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        scheduler.load_state_dict(ckpt["scheduler"])
+        start_epoch = ckpt["epoch"]
+        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    else:
+        start_epoch = 0
+        best_miou = float("-inf")
 
 
     # -------------------- Logging/TensorBoard --------------------
@@ -110,7 +110,7 @@ def train(args):
     best_miou = float("-inf")
     eps = 1e-6
 
-    for epoch in range(72,args.epochs):
+    for epoch in range(start_epoch,args.epochs):
         model.train()
         total_loss = 0.0
         num_steps = 0  # 에폭 내 배치 수
@@ -192,13 +192,30 @@ def train(args):
                     (epoch + 1, train_loss_epoch, val_loss_epoch, miou, acc, lr))
 
         # 베스트(Val Loss 기준)
+        # if (miou > best_miou + eps) or (abs(miou - best_miou) <= eps and (epoch + 1) > 0):
+        #     best_miou = miou
+        #     best_epoch = epoch + 1
+        #     ckpf = os.path.join(args.result_dir, f"model_best_e{best_epoch}_miou{best_miou:.4f}.pth")
+        #     torch.save(_get_state_dict(model), ckpf)
+        #     torch.save(_get_state_dict(model), os.path.join(args.result_dir, "model_best.pth"))
+        ckpt = {
+            "epoch": epoch + 1,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "best_miou": best_miou
+        }
+
+        # always save latest
+        torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_latest.pth"))
+
+        # save best separately
         if (miou > best_miou + eps) or (abs(miou - best_miou) <= eps and (epoch + 1) > 0):
             best_miou = miou
             best_epoch = epoch + 1
             ckpf = os.path.join(args.result_dir, f"model_best_e{best_epoch}_miou{best_miou:.4f}.pth")
-            torch.save(_get_state_dict(model), ckpf)
-            torch.save(_get_state_dict(model), os.path.join(args.result_dir, "model_best.pth"))
-
+            torch.save(ckpt, ckpf)
+            torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_best.pth"))
     if writer is not None:
         writer.close()
 
