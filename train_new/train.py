@@ -80,21 +80,23 @@ def train(args):
 #     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
 
-    # if args.loadpath is not None:
-    #     state_dict = torch.load(args.loadpath, map_location=device)
-    #     load_state_dict(model, state_dict)
-    
+    ## pretrained가져오거나 none 일때
     if args.loadpath is not None:
-        ckpt = torch.load(args.loadpath, map_location=device)
-        model.load_state_dict(ckpt["model"])
-        optimizer.load_state_dict(ckpt["optimizer"])
-        scheduler.load_state_dict(ckpt["scheduler"])
-        start_epoch = ckpt["epoch"]
-        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
-        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
-    else:
-        start_epoch = 0
-        best_miou = float("-inf")
+        state_dict = torch.load(args.loadpath, map_location=device)
+        load_state_dict(model, state_dict)
+    
+    ## 학습 끊겨 checkpoint 불러올 때
+    # if args.loadpath is not None:
+    #     ckpt = torch.load(args.loadpath, map_location=device)
+    #     model.load_state_dict(ckpt["model"])
+    #     optimizer.load_state_dict(ckpt["optimizer"])
+    #     scheduler.load_state_dict(ckpt["scheduler"])
+    #     start_epoch = ckpt["epoch"]
+    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    # else:
+    #     start_epoch = 0
+    #     best_miou = float("-inf")
 
 
     # -------------------- Logging/TensorBoard --------------------
