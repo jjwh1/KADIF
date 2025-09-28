@@ -106,11 +106,14 @@ def train(args):
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
     # scheduler = WarmupPolyEpochLR(optimizer, total_epochs=args.epochs, warmup_epochs=5, warmup_ratio=5e-4)
 
+    ## pretrained가져오거나 none 일때
     # if args.loadpath is not None:
     #     # map_location = {f'cuda:{0}': f'cuda:{local_rank }'}
     #     state_dict = torch.load(args.loadpath, map_location=device)
     #     load_state_dict(model, state_dict)
+    start_epoch=0
     
+    ## 학습 끊겨 checkpoint 불러올 때
     if args.loadpath is not None:
         ckpt = torch.load(args.loadpath, map_location=device)
         model.load_state_dict(ckpt["model"])

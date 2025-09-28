@@ -84,6 +84,7 @@ def train(args):
     if args.loadpath is not None:
         state_dict = torch.load(args.loadpath, map_location=device)
         load_state_dict(model, state_dict)
+    start_epoch=0
     
     ## 학습 끊겨 checkpoint 불러올 때
     # if args.loadpath is not None:
