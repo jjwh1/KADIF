@@ -216,6 +216,16 @@ def train(args):
         if (miou > best_miou + eps) or (abs(miou - best_miou) <= eps and (epoch + 1) > 0):
             best_miou = miou
             best_epoch = epoch + 1
+
+            # best_miou 갱신 후 ckpt 다시 정의해야 함
+            ckpt = {
+                "epoch": epoch + 1,
+                "model": model.state_dict(),
+                "optimizer": optimizer.state_dict(),
+                "scheduler": scheduler.state_dict(),
+                "best_miou": best_miou
+            }
+            
             ckpf = os.path.join(args.result_dir, f"model_best_e{best_epoch}_miou{best_miou:.4f}.pth")
             torch.save(ckpt, ckpf)
             torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_best.pth"))
