@@ -81,23 +81,23 @@ def train(args):
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
 
     ## pretrained가져오거나 none 일때
-    if args.loadpath is not None:
-        state_dict = torch.load(args.loadpath, map_location=device)
-        load_state_dict(model, state_dict)
-    start_epoch=0
-    
-    ## 학습 끊겨 checkpoint 불러올 때
     # if args.loadpath is not None:
-    #     ckpt = torch.load(args.loadpath, map_location=device)
-    #     model.load_state_dict(ckpt["model"])
-    #     optimizer.load_state_dict(ckpt["optimizer"])
-    #     scheduler.load_state_dict(ckpt["scheduler"])
-    #     start_epoch = ckpt["epoch"]
-    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
-    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
-    # else:
-    #     start_epoch = 0
-    #     best_miou = float("-inf")
+    #     state_dict = torch.load(args.loadpath, map_location=device)
+    #     load_state_dict(model, state_dict)
+    # start_epoch=0
+
+    ## 학습 끊겨 checkpoint 불러올 때
+    if args.loadpath is not None:
+        ckpt = torch.load(args.loadpath, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        scheduler.load_state_dict(ckpt["scheduler"])
+        start_epoch = ckpt["epoch"]
+        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    else:
+        start_epoch = 0
+        best_miou = float("-inf")
 
 
     # -------------------- Logging/TensorBoard --------------------
@@ -255,9 +255,9 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset")    # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--loadpath", type=str, help="Path to pretrained model",
-                        default="/content/drive/MyDrive/KADIF/pretrained/cityscapes.pth")
+                        default="/content/drive/MyDrive/KADIF/result/DDRNet_5/checkpoint_best.pth")
     parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_5")   # -v /mnt/d/KADIF:/workspace/result \
+    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_5_2")   # -v /mnt/d/KADIF:/workspace/result \
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_classes", type=int, default=19)
