@@ -115,7 +115,7 @@ def train(args):
     
     ## 학습 끊겨 checkpoint 불러올 때
     if args.loadpath is not None:
-        ckpt = torch.load(args.loadpath, map_location=device)
+        ckpt = torch.load(args.loadpath, map_location=device,weights_only=False)
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
         scheduler.load_state_dict(ckpt["scheduler"])

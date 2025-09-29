@@ -255,7 +255,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset")    # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--loadpath", type=str, help="Path to pretrained model",
-                        default="/content/drive/MyDrive/KADIF/result/DDRNet_5/checkpoint_best.pth")
+                        default="/content/drive/MyDrive/KADIF/result/DDRNet_5/model_best_e47_miou0.7109.pth")
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_5_2")   # -v /mnt/d/KADIF:/workspace/result \
     parser.add_argument("--lr", type=float, default=5e-4)
