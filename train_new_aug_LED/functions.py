@@ -305,29 +305,24 @@ import torch.nn.functional as F
 
 # 🔹 새로 추가
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2.0, alpha=None, ignore_index=255, reduction='mean'):
+    def __init__(self, gamma=2.0, alpha=None, ignore_index=255, reduction='mean', aux_weights=[1.0, 0.4]):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
-        self.alpha = alpha  # 클래스별 가중치 텐서 or None
+        self.alpha = alpha
         self.ignore_index = ignore_index
         self.reduction = reduction
+        self.aux_weights = aux_weights
 
-    def forward(self, logits, targets):
-        # logits: (B, C, H, W), targets: (B, H, W)
+    def _forward_single(self, logits, targets):
         ce_loss = F.cross_entropy(
             logits, targets,
             weight=self.alpha,
             ignore_index=self.ignore_index,
             reduction="none"
-        )  # (B, H, W)
-
-        # 정답 확률
+        )
         logpt = -ce_loss
         pt = torch.exp(logpt)
-
-        # focal 계수
         focal_term = (1 - pt) ** self.gamma
-
         loss = focal_term * ce_loss
         if self.reduction == 'mean':
             return loss.mean()
@@ -335,6 +330,13 @@ class FocalLoss(nn.Module):
             return loss.sum()
         else:
             return loss
+
+    def forward(self, logits, targets):
+        if isinstance(logits, tuple):  # main_out, aux_out 같이 들어오는 경우
+            return sum(w * self._forward_single(l, targets) for l, w in zip(logits, self.aux_weights))
+        else:
+            return self._forward_single(logits, targets)
+
 
 # focal loss에서 필요한 연산
 
