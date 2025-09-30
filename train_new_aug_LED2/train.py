@@ -296,7 +296,7 @@ if __name__ == "__main__":
     parser.add_argument("--loadpath", type=str, help="Path to pretrained model",
                         default="/content/drive/MyDrive/KADIF/pretrained/DDRNet23s_imagenet.pth")
     parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_7")   # -v /mnt/d/KADIF:/workspace/result \
+    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_8")   # -v /mnt/d/KADIF:/workspace/result \
     parser.add_argument("--class_weights_dir", type=str, default="/content/drive/MyDrive/KADIF/class_weights.pt",
                 help="focal loss 사용시알파 계산을 위한 trainset의 class weights")  # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--lr", type=float, default=5e-4)
