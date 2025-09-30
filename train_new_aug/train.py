@@ -101,6 +101,13 @@ def train(args):
     print(f"[Single GPU] Model initialized")
 
     # Loss, Optimizer, Scheduler
+        # class_weights = compute_or_load_class_weights(
+    #     train_loader, args.num_classes,
+    #     cache_path=args.class_weights_dir,
+    #     method="effective_num"
+    # ).to(device)
+    # criterion = FocalLoss(gamma=2.0, alpha=class_weights, ignore_index=255)
+
     criterion = CrossEntropy(ignore_label=255)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=1e-2)
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
@@ -306,6 +313,8 @@ if __name__ == "__main__":
                         default=None)  
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_temp")  
+    parser.add_argument("--class_weights_dir", type=str, default="/content/drive/MyDrive/KADIF/class_weights.pt",
+                help="focal loss 사용시알파 계산을 위한 trainset의 class weights")  # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_classes", type=int, default=19)

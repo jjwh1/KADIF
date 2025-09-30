@@ -75,36 +75,38 @@ def train(args):
     print(f"[Single GPU] Model initialized")
 
     # Loss, Optimizer, Scheduler
-        # class_weights = compute_or_load_class_weights(
-    #     train_loader, args.num_classes,
-    #     cache_path=args.class_weights_dir,
-    #     method="effective_num"
-    # ).to(device)
-    # criterion = FocalLoss(gamma=2.0, alpha=class_weights, ignore_index=255)
+        # focal loss 사용 :클래스 가중치 계산
+    # 클래스 가중치 불러오기 (없으면 계산해서 저장)
+    class_weights = compute_or_load_class_weights(
+        train_loader, args.num_classes,
+        cache_path=args.class_weights_dir,
+        method="inverse"   # inverse, effective_num
+    ).to(device)
+    criterion = FocalLoss(gamma=2.0, alpha=class_weights, ignore_index=255)
 
-    criterion = CrossEntropy(ignore_label=255)
+    # criterion = CrossEntropy(ignore_label=255)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=1e-2)
 #     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
     scheduler = WarmupCosineAnnealingLR(optimizer, total_epochs=args.epochs, warmup_epochs=10, eta_min=1e-5)
 
     ## pretrained가져오거나 none 일때
-    # if args.loadpath is not None:
-    #     state_dict = torch.load(args.loadpath, map_location=device)
-    #     load_state_dict(model, state_dict)
-    # start_epoch=0
+    if args.loadpath is not None:
+        state_dict = torch.load(args.loadpath, map_location=device)
+        load_state_dict(model, state_dict)
+    start_epoch=0
 
     ## 학습 끊겨 checkpoint 불러올 때
-    if args.loadpath is not None:
-        ckpt = torch.load(args.loadpath, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt["model"])
-        optimizer.load_state_dict(ckpt["optimizer"])
-        scheduler.load_state_dict(ckpt["scheduler"])
-        start_epoch = ckpt["epoch"]
-        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
-        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
-    else:
-        start_epoch = 0
-        best_miou = float("-inf")
+    # if args.loadpath is not None:
+    #     ckpt = torch.load(args.loadpath, map_location=device, weights_only=False)
+    #     model.load_state_dict(ckpt["model"])
+    #     optimizer.load_state_dict(ckpt["optimizer"])
+    #     scheduler.load_state_dict(ckpt["scheduler"])
+    #     start_epoch = ckpt["epoch"]
+    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    # else:
+    #     start_epoch = 0
+    #     best_miou = float("-inf")
 
 
     # -------------------- Logging/TensorBoard --------------------
@@ -232,7 +234,7 @@ def train(args):
                 "scheduler": scheduler.state_dict(),
                 "best_miou": best_miou
             }
-
+            
             ckpf = os.path.join(args.result_dir, f"model_best_e{best_epoch}_miou{best_miou:.4f}.pth")
             torch.save(ckpt, ckpf)
             torch.save(ckpt, os.path.join(args.result_dir, "checkpoint_best.pth"))
@@ -272,15 +274,15 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset")    # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--loadpath", type=str, help="Path to pretrained model",
-                        default="/content/drive/MyDrive/KADIF/result/DDRNet_5/model_best_e47_miou0.7109.pth")
+                        default="/content/drive/MyDrive/KADIF/pretrained/DDRNet23s_imagenet.pth")
     parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_5_2")   # -v /mnt/d/KADIF:/workspace/result \
+    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_7")   # -v /mnt/d/KADIF:/workspace/result \
     parser.add_argument("--class_weights_dir", type=str, default="/content/drive/MyDrive/KADIF/class_weights.pt",
                 help="focal loss 사용시알파 계산을 위한 trainset의 class weights")  # -v /mnt/c/Users/8138/Desktop/KADIF/seg/SemanticDataset_trainvalid:/workspace/dataset \
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_classes", type=int, default=19)
-    parser.add_argument("--crop_size", default=[1080, 1920], type=arg_as_list, help="crop size (H W)")
+    parser.add_argument("--crop_size", default=[1024, 1024], type=arg_as_list, help="crop size (H W)")
     parser.add_argument("--scale_range", default=[0.75, 1.25], type=arg_as_list, help="resize Input")
 
     args = parser.parse_args()

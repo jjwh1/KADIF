@@ -168,6 +168,7 @@ class SegmentationDataset(Dataset):
         "low_light": "low_light",
         "overlight": "overbright",
         "overbright": "overbright",
+        "low_light_byLED": "low_light",
         "degradation": "degradation",
         "normal": "normal",
     }
@@ -195,6 +196,10 @@ class SegmentationDataset(Dataset):
             suffix = Path(p).suffix.lower()
             if suffix not in self.IMG_EXTS:
                 continue
+            # --- train 세트일 때만 low_light 폴더 제외 ---
+            if self.subset == "train" and "/low_light/" in p.replace("\\", "/"):
+                continue
+
             lp = self._get_label_path(p)  # same tag, labelmap로 치환
             if not os.path.exists(lp):
                 # 필요하면 경고만 출력하고 continue

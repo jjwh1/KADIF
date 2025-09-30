@@ -348,7 +348,97 @@ class OhemCrossEntropy(nn.Module):
             return sum([w * self._forward(pred, labels) for (pred, w) in zip(preds, self.aux_weights)])
         return self._forward(preds, labels)        
 
-    
+import torch.nn as nn
+import torch.nn.functional as F
+
+# 🔹 새로 추가
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=2.0, alpha=None, ignore_index=255, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha  # 클래스별 가중치 텐서 or None
+        self.ignore_index = ignore_index
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        # logits: (B, C, H, W), targets: (B, H, W)
+        ce_loss = F.cross_entropy(
+            logits, targets,
+            weight=self.alpha,
+            ignore_index=self.ignore_index,
+            reduction="none"
+        )  # (B, H, W)
+
+        # 정답 확률
+        logpt = -ce_loss
+        pt = torch.exp(logpt)
+
+        # focal 계수
+        focal_term = (1 - pt) ** self.gamma
+
+        loss = focal_term * ce_loss
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
+
+# focal loss에서 필요한 연산
+
+import torch
+import numpy as np
+from tqdm import tqdm
+
+
+def compute_class_weights(dataloader, num_classes, ignore_index=255, method="inverse"):
+    """
+    dataloader: 학습용 DataLoader (train_loader)
+    num_classes: 클래스 개수 (예: 19)
+    ignore_index: 무시할 라벨 (보통 255)
+    method: "inverse" | "effective_num"
+
+    반환: torch.Tensor [num_classes]
+    """
+    counts = np.zeros(num_classes, dtype=np.int64)
+
+    for imgs, labels, _ in tqdm(dataloader, desc="Counting class frequencies"):
+        labels = labels.numpy()
+        for c in range(num_classes):
+            counts[c] += np.sum(labels == c)
+
+    # ----- 방법 1: 단순 역비율 (Inverse Frequency) -----
+    if method == "inverse":
+        weights = 1.0 / (counts + 1e-6)  # 빈도가 적을수록 큰 가중치
+        weights = weights / weights.sum() * num_classes  # 정규화
+
+    # ----- 방법 2: Effective Number of Samples (Cui et al., CVPR 2019) -----
+    elif method == "effective_num":
+        beta = 0.9999
+        effective_num = 1.0 - np.power(beta, counts)
+        weights = (1.0 - beta) / (effective_num + 1e-6)
+        weights = weights / weights.sum() * num_classes
+
+    return torch.tensor(weights, dtype=torch.float32)
+
+import torch
+import os
+
+def compute_or_load_class_weights(dataloader, num_classes, cache_path=None,
+                                  ignore_index=255, method="effective_num"):
+    # 캐시 파일이 있으면 바로 불러오기
+    if os.path.exists(cache_path):
+        print(f"[Info] Loading precomputed class weights from {cache_path}")
+        return torch.load(cache_path)
+
+    # 없으면 새로 계산
+    print("[Info] Computing class weights...")
+    weights = compute_class_weights(dataloader, num_classes,
+                                    ignore_index=ignore_index, method=method)
+    torch.save(weights, cache_path)
+    print(f"[Info] Saved class weights to {cache_path}")
+    return weights
+
 from torch.optim.lr_scheduler import _LRScheduler
 
 class WarmupCosineAnnealingLR(_LRScheduler):
