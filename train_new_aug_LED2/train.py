@@ -87,20 +87,20 @@ def train(args):
 
 
     weight = torch.ones(19)              # 기본은 전부 1.0
-    weight[1] = 3.0
-    weight[2] = 3.0
-    weight[3] = 3
-    weight[4] = 3
-    weight[5] = 2.7
-    weight[7] = 2.5
-    weight[8] = 2.5     
-    weight[9] = 3.2
-    weight[10] = 3.5
-    weight[11] = 2.5   
-    weight[12] = 3.2
-    weight[13] = 2.5
-    weight[16] = 2.5
-    weight[17] = 3.3           
+    weight[1] = 7.0
+    weight[2] = 7.0
+    weight[3] = 7.0
+    weight[4] = 7.0
+    weight[5] = 6.7
+    weight[7] = 6.5
+    weight[8] = 6.5     
+    weight[9] = 9
+    weight[10] = 10
+    weight[11] = 6.5   
+    weight[12] = 9
+    weight[13] = 6.5
+    weight[16] = 6.5
+    weight[17] = 10           
 
     criterion = CrossEntropy(ignore_label=255, weight=weight.to(device))
     # criterion = CrossEntropy(ignore_label=255)
