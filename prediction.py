@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
-from DDRNet import DDRNet
+from train_new.DDRNet import DDRNet
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.cm as cm
 
