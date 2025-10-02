@@ -15,32 +15,6 @@ from PIL import ImageFile, Image
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
 
-from torch.utils.data._utils.collate import default_collate
-from degra_for_aug import build_transform
-
-
-def collate_with_meta(batch):
-    """
-    batch: list of samples; each sample is either
-      (img, label) or (img, label, meta)
-    반환:
-      imgs:  Tensor [B, C, H, W]
-      labels: Tensor [B, H, W]
-      metas:  list[dict] 길이 B (메타 없던 경우 빈 dict 제공)
-    """
-    imgs, labels, metas = [], [], []
-    for sample in batch:
-        if len(sample) == 3:
-            img, lab, meta = sample
-        else:
-            img, lab = sample
-            meta = {}  # 검증셋 등 메타 없는 경우
-        imgs.append(img)
-        labels.append(lab)
-        metas.append(meta)
-    return torch.stack(imgs, dim=0), torch.stack(labels, dim=0), metas
-
-
 def arg_as_list(s):
     v = ast.literal_eval(s)
     if type(v) is not list:
@@ -89,10 +63,9 @@ class SegmentationTransform:
         is_train=True,
         mean=(0.485, 0.456, 0.406),
         std=(0.229, 0.224, 0.225),
-        val_resize_size=(1080, 1920),
-        normal_aug_prob=0.5,  # normal 이미지에 degradation 적용할 확률
-        normal_aug_chains=None,  # normal에서 사용할 조합(없으면 기본 5종)
-        severity_range=(1, 5),  # 각 degradation 강도 랜덤 범위
+        prob_by_tag=None,   # {'low_light':0.0, 'overbright':0.0, 'degradation':0.0, 'normal':0.0}
+        fn_by_tag=None,      # {'low_light': callable(img,label)->(img,label), ...}
+        val_resize_size=(1080, 1920)
     ):
         self.crop_size = crop_size  # (H, W)
         self.scale_range = scale_range
@@ -103,19 +76,16 @@ class SegmentationTransform:
         self.std = std
 
         self.bilinear = transforms.InterpolationMode.BILINEAR
-        self.nearest = transforms.InterpolationMode.NEAREST
+        self.nearest  = transforms.InterpolationMode.NEAREST
 
-        self.normal_aug_prob = float(normal_aug_prob)
-        self.severity_range = (int(severity_range[0]), int(severity_range[1]))
-
-        default_chains = [
-            ("rain", "raindrop", "low_light"),
-            ("rain", "raindrop"),
-            ("rain", "raindrop", "haze"),
-            ("low_light",),
-            ("haze",),
-        ]
-        self.normal_aug_chains = list(normal_aug_chains) if normal_aug_chains else default_chains
+        # 태그별 확률/함수 (기본 no-op)
+        base_prob = {"low_light":0.0, "overbright":0.0, "degradation":0.0, "normal":0.0}
+        self.prob = base_prob if prob_by_tag is None else {**base_prob, **prob_by_tag}
+        self.fn = {k: None for k in base_prob}
+        if fn_by_tag:
+            for k, f in fn_by_tag.items():
+                if k in self.fn:
+                    self.fn[k] = f
 
     # ---- 내부 유틸: 기하 증강 ----
     def _random_scale(self, image, label):
@@ -151,25 +121,16 @@ class SegmentationTransform:
         label = TF.resize(label, (H, W), interpolation=self.nearest)
         return image, label
 
-    # --- 단일 증강 적용(강도 랜덤) ---
-    def _apply_single_aug(self, image, aug_name):
-        sev = random.randint(self.severity_range[0], self.severity_range[1])
-        t = build_transform(aug_name, sev)
-        return t(image), (aug_name, sev)
-
-    # --- 체인 증강 적용 (여러 개 순차 적용) ---
-    def _apply_aug_chain(self, image, chain_names):
-        out = image
-        applied = []
-        for name in chain_names:
-            out, item = self._apply_single_aug(out, name)
-            applied.append(item)  # (aug_name, sev)
-        return out, applied
+    # ---- 태그 훅: 확률만 관리(기본 no-op) ----
+    def _maybe_apply_tag_aug(self, image, label, tag):
+        p = self.prob.get(tag, 0.0)
+        if random.random() < p:
+            fn = self.fn.get(tag, None)
+            if fn is not None:
+                return fn(image, label)  # 사용자가 나중에 채울 자리
+        return image, label
 
     def __call__(self, image, label, tag="normal"):
-        # === 태그 기반 degradation 증강 ===
-        tag = (tag or "normal").lower()
-
         if not self.is_train:
             # VALID: ToTensor + Normalize 만
             if self.val_resize_size is not None:
@@ -178,28 +139,21 @@ class SegmentationTransform:
             img_t = TF.to_tensor(image)
             img_t = TF.normalize(img_t, self.mean, self.std)
             lab_t = torch.from_numpy(np.array(label, dtype=np.uint8)).long()
-            meta = {"tag": tag, "applied": []}  # 검증에서도 meta 반환(빈 리스트)
-            return img_t, lab_t, meta  # 항상 3개 반환
+            return img_t, lab_t
 
         # TRAIN: 기하 증강
         image, label = self._random_scale(image, label)
         image, label = self._pad_and_random_crop(image, label)
         image, label = self._random_hflip(image, label, p=0.5)
 
-        applied = []  # ← 이번 샘플에 실제 적용된 증강들
-        # if tag == "low_light":
-        #     image, applied = self._apply_aug_chain(image, ["overbright"])
-        if tag == "normal":
-            if random.random() < self.normal_aug_prob:
-                chain = random.choice(self.normal_aug_chains)
-                image, applied = self._apply_aug_chain(image, chain)
+        # TRAIN: 태그별 증강 (자리만 남김)
+        image, label = self._maybe_apply_tag_aug(image, label, tag)
 
         # ToTensor + Normalize
-        img_t = TF.to_tensor(image);
+        img_t = TF.to_tensor(image)
         img_t = TF.normalize(img_t, self.mean, self.std)
         lab_t = torch.from_numpy(np.array(label, dtype=np.uint8)).long()
-        meta = {"tag": tag, "applied": applied}  # e.g. {"applied":[("rain",3),("raindrop",2)], ...}
-        return img_t, lab_t, meta
+        return img_t, lab_t
 
 
 # =========================
@@ -213,8 +167,8 @@ class SegmentationDataset(Dataset):
         "lowlight": "low_light",
         "low_light": "low_light",
         "overlight": "overbright",
-        "low_light_byLED": "low_light",
         "overbright": "overbright",
+        "low_light_byLED": "low_light",
         "degradation": "degradation",
         "normal": "normal",
     }
@@ -226,9 +180,9 @@ class SegmentationDataset(Dataset):
         crop_size=(1024,1024),
         subset="train",                 # 'train' or 'val'
         scale_range=(0.5, 1.5),
-        val_resize_size=(1080, 1920),
-        normal_aug_prob=0.5,
-        severity_range=(1, 5),
+        prob_by_tag=None,
+        fn_by_tag=None,
+        val_resize_size=(1080, 1920)
     ):
         self.root_dir = os.path.abspath(root_dir)
         self.subset = subset
@@ -242,7 +196,6 @@ class SegmentationDataset(Dataset):
             suffix = Path(p).suffix.lower()
             if suffix not in self.IMG_EXTS:
                 continue
-
             # --- train 세트일 때만 low_light 폴더 제외 ---
             if self.subset == "train" and "/low_light/" in p.replace("\\", "/"):
                 continue
@@ -265,16 +218,9 @@ class SegmentationDataset(Dataset):
             crop_size=crop_size,
             scale_range=scale_range,
             is_train=(subset == "train"),
-            val_resize_size=val_resize_size,
-            normal_aug_prob=normal_aug_prob,  # ← 필요 시 조정
-            severity_range=severity_range,  # ← 필요 시 조정
-            normal_aug_chains=[
-                ("rain", "raindrop", "low_light"),
-                ("rain", "raindrop"),
-                ("rain", "raindrop", "haze"),
-                ("low_light",),
-                ("haze",),
-            ]
+            prob_by_tag=prob_by_tag,
+            fn_by_tag=fn_by_tag,
+            val_resize_size=val_resize_size
         )
 
     # --- image → labelmap 치환 (같은 subset/tag 하위로)
@@ -309,8 +255,8 @@ class SegmentationDataset(Dataset):
         img = Image.open(self.image_paths[idx]).convert("RGB")
         lab = Image.open(self.label_paths[idx]).convert("L")
         tag = self.tags[idx]
-        img_t, lab_t, meta = self.transform(img, lab, tag=tag)
-        return img_t, lab_t, meta
+        img_t, lab_t = self.transform(img, lab, tag=tag)
+        return img_t, lab_t
 
 
 
@@ -446,7 +392,6 @@ def compute_or_load_class_weights(dataloader, num_classes, cache_path=None,
     torch.save(weights, cache_path)
     print(f"[Info] Saved class weights to {cache_path}")
     return weights
-
 
 from torch.optim.lr_scheduler import _LRScheduler
 
