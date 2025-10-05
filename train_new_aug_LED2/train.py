@@ -109,7 +109,7 @@ def train(args):
     class_weights = compute_or_load_class_weights(
         train_loader, args.num_classes,
         cache_path=args.class_weights_dir,
-        method="effective_num"
+        method="inverse"
     ).to(device)
     criterion = FocalLoss(gamma=2, alpha=class_weights, ignore_index=255)
 
