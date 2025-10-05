@@ -111,7 +111,7 @@ def train(args):
         cache_path=args.class_weights_dir,
         method="effective_num"
     ).to(device)
-    criterion = FocalLoss(gamma=2.3, alpha=class_weights, ignore_index=255)
+    criterion = FocalLoss(gamma=2, alpha=class_weights, ignore_index=255)
 
     # criterion = CrossEntropy(ignore_label=255)
     # criterion = OhemCrossEntropy(ignore_label=255)
@@ -121,24 +121,24 @@ def train(args):
     # scheduler = WarmupPolyEpochLR(optimizer, total_epochs=args.epochs, warmup_epochs=5, warmup_ratio=5e-4)
 
     ## pretrained가져오거나 none 일때
-    # if args.loadpath is not None:
-    #     # map_location = {f'cuda:{0}': f'cuda:{local_rank }'}
-    #     state_dict = torch.load(args.loadpath, map_location=device)
-    #     load_state_dict(model, state_dict)
-    # start_epoch=0
+    if args.loadpath is not None:
+        # map_location = {f'cuda:{0}': f'cuda:{local_rank }'}
+        state_dict = torch.load(args.loadpath, map_location=device)
+        load_state_dict(model, state_dict)
+    start_epoch=0
 
     ## 학습 끊겨 checkpoint 불러올 때
-    if args.loadpath is not None:
-        ckpt = torch.load(args.loadpath, map_location=device,weights_only=False)
-        model.load_state_dict(ckpt["model"])
-        optimizer.load_state_dict(ckpt["optimizer"])
-        scheduler.load_state_dict(ckpt["scheduler"])
-        start_epoch = ckpt["epoch"]
-        best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
-        print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
-    else:
-        start_epoch = 0
-        best_miou = float("-inf")
+    # if args.loadpath is not None:
+    #     ckpt = torch.load(args.loadpath, map_location=device,weights_only=False)
+    #     model.load_state_dict(ckpt["model"])
+    #     optimizer.load_state_dict(ckpt["optimizer"])
+    #     scheduler.load_state_dict(ckpt["scheduler"])
+    #     start_epoch = ckpt["epoch"]
+    #     best_miou = ckpt.get("best_miou", float("-inf"))  # 혹시 저장된 값 있으면 복원
+    #     print(f"✅ Resumed training from epoch {start_epoch}, best_miou={best_miou:.4f}")
+    # else:
+    #     start_epoch = 0
+    #     best_miou = float("-inf")
 
 
     # -------------------- Logging/TensorBoard --------------------
@@ -317,9 +317,9 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset") 
     parser.add_argument("--loadpath", type=str, help="Path to dataset root",
-                        default="/content/drive/MyDrive/KADIF/result/DDRNet_10_2/checkpoint_latest.pth")  
+                        default="/content/drive/MyDrive/KADIF/pretrained/DDRNet23s_imagenet.pth")  
     parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_10_3")  
+    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_11")  
     parser.add_argument("--class_weights_dir", type=str, default="/content/drive/MyDrive/KADIF/class_weights.pt",
                 help="focal loss 사용시알파 계산을 위한 trainset의 class weights")  
     parser.add_argument("--lr", type=float, default=5e-4)
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser.add_argument("--crop_size", default=[1024, 1024], type=arg_as_list, help="crop size (H W)")
     parser.add_argument("--scale_range", default=[0.75, 1.25], type=arg_as_list, help="resize Input")
     parser.add_argument("--normal_aug_prob", type=float, default=0.5, help="normal 이미지에 degradation 조합을 적용할 확률")
-    parser.add_argument("--severity_min", type=int, default=1)
+    parser.add_argument("--severity_min", type=int, default=3)
     parser.add_argument("--severity_max", type=int, default=5)
 
     args = parser.parse_args()
