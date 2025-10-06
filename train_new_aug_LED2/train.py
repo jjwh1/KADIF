@@ -317,7 +317,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str, help="Path to dataset root",
                         default="/content/dataset") 
     parser.add_argument("--loadpath", type=str, help="Path to dataset root",
-                        default="/content/drive/MyDrive/KADIF/result/DDRNet11/checkpoint_latest.pth")  
+                        default="/content/drive/MyDrive/KADIF/result/DDRNet_11/checkpoint_latest.pth")  
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/DDRNet_11_2")  
     parser.add_argument("--class_weights_dir", type=str, default="/content/drive/MyDrive/KADIF/class_weights.pt",
