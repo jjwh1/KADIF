@@ -337,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str,  help="Path to dataset root",
                         default="/content/dataset")
     parser.add_argument("--loadpath", type=str,  help="Path to dataset root", 
-                        default="/content/drive/MyDrive/KADIF/pretrined/DDRNet23s_imagenet.pth")    # "ex: ./pths/DDRNet23s_imagenet.pth"
+                        default="/content/drive/MyDrive/KADIF/pretrained/DDRNet23s_imagenet.pth")    # "ex: ./pths/DDRNet23s_imagenet.pth"
     parser.add_argument("--teacher_loadpath", type=str, help="Path to dataset root",
                         default="/content/drive/MyDrive/KADIF/pretrained/teacher_weights_only_2_DDRNet39.pth")
     parser.add_argument("--epochs", type=int, default=500)
