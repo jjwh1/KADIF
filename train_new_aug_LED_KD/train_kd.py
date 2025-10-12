@@ -345,7 +345,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_classes", type=int, default=19)
-    parser.add_argument("--crop_size", default=[1024, 1920], type=arg_as_list, help="crop size (H W)")
+    parser.add_argument("--crop_size", default=[1024, 1024], type=arg_as_list, help="crop size (H W)")
     parser.add_argument("--scale_range", default=[0.75, 1.25], type=arg_as_list,  help="resize Input")
     parser.add_argument("--normal_aug_prob", type=float, default=0.8, help="normal 이미지에 degradation 조합을 적용할 확률")
     parser.add_argument("--severity_min", type=int, default=1)
