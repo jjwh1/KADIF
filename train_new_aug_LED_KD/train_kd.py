@@ -8,8 +8,8 @@ import torch
 from torch.utils.data import DataLoader, DistributedSampler, random_split
 from tqdm import tqdm
 from DDRNet import DDRNet
-from kd_losses.DCSFKDLoss import DCSFKDLoss
-from kd_losses.OutputKDLoss import OutputKDLoss
+from DCSFKDLoss import DCSFKDLoss
+from OutputKDLoss import OutputKDLoss
 from DDRNet_39 import *
 from functions import *
 from pathlib import Path
