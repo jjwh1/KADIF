@@ -13,7 +13,7 @@ from OutputKDLoss import OutputKDLoss
 from DDRNet_39 import *
 from functions import *
 from pathlib import Path
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import math
 import numpy
 
