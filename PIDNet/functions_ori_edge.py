@@ -274,6 +274,7 @@ class SegmentationDataset(Dataset):
         "lowlight": "low_light",
         "low_light": "low_light",
         "overlight": "overbright",
+        "low_light_byLED": "low_light",
         "overbright": "overbright",
         "degradation": "degradation",
         "normal": "normal",
@@ -289,8 +290,6 @@ class SegmentationDataset(Dataset):
         val_resize_size=(1080, 1920),
         normal_aug_prob=0.5,
         severity_range=(1, 5),
-        edge_size=4,         # [NEW] transform에 전달
-        edge_pad=True,       # [NEW]
     ):
         self.root_dir = os.path.abspath(root_dir)
         self.subset = subset
@@ -304,8 +303,15 @@ class SegmentationDataset(Dataset):
             suffix = Path(p).suffix.lower()
             if suffix not in self.IMG_EXTS:
                 continue
+
+            # --- train 세트일 때만 low_light 폴더 제외 ---
+            if self.subset == "train" and "/low_light/" in p.replace("\\", "/"):
+                continue
+
             lp = self._get_label_path(p)  # same tag, labelmap로 치환
             if not os.path.exists(lp):
+                # 필요하면 경고만 출력하고 continue
+                # print(f"[WARN] label not found for {p}")
                 continue
             image_paths.append(p)
             label_paths.append(lp)
@@ -321,17 +327,15 @@ class SegmentationDataset(Dataset):
             scale_range=scale_range,
             is_train=(subset == "train"),
             val_resize_size=val_resize_size,
-            normal_aug_prob=normal_aug_prob,
-            severity_range=severity_range,
+            normal_aug_prob=normal_aug_prob,  # ← 필요 시 조정
+            severity_range=severity_range,  # ← 필요 시 조정
             normal_aug_chains=[
                 ("rain", "raindrop", "low_light"),
                 ("rain", "raindrop"),
                 ("rain", "raindrop", "haze"),
                 ("low_light",),
                 ("haze",),
-            ],
-            edge_size=edge_size,   # [NEW]
-            edge_pad=edge_pad,     # [NEW]
+            ]
         )
 
     # --- image → labelmap 치환 (같은 subset/tag 하위로)
