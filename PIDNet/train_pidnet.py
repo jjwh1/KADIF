@@ -397,7 +397,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", type=str,  help="Path to dataset root",
                         default="/content/dataset")
     parser.add_argument("--loadpath", type=str,  help="Path to dataset root", 
-                        default="/content/drive/MyDrive/KADIF/pretrained/teacher_weights_only_2_DDRNet39.pth")
+                        default="/content/drive/MyDrive/KADIF/pretrained/PIDNet_S_ImageNet.pth.pth")
     parser.add_argument("--resume", type=str,
                         default=None,
                         help="통합 ckpt(.pth/.tar) 또는 가중치(.pth) 경로")
