@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, DistributedSampler, random_split
 from tqdm import tqdm
 from functions_ori_edge import *
 from pathlib import Path
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import math
 import models
 from utils.utils import FullModel
