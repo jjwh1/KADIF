@@ -82,7 +82,7 @@ def train(args):
                               shuffle=True, num_workers=2, pin_memory=True,
                               worker_init_fn=_seed_worker, collate_fn=collate_with_meta)
 
-    val_dataset = SegmentationDataset(args.dataset_dir, args.crop_size, 'validation', args.scale_range,
+    val_dataset = SegmentationDataset(args.dataset_dir, args.crop_size, 'val', args.scale_range,
                                       val_resize_size=(1080, 1920))
     display_dataset_info(args.dataset_dir, val_dataset)
     # val_sampler = DistributedSampler(val_dataset, num_replicas=world_size, rank=local_rank,
@@ -122,6 +122,8 @@ def train(args):
         return m.state_dict()
 
     # ---------- NEW: prefix 정규화 유틸 ----------
+    
+
     def _strip_prefixes(sd, prefixes):
         new_sd = OrderedDict()
         for k, v in sd.items():
@@ -132,40 +134,86 @@ def train(args):
             new_sd[nk] = v
         return new_sd
 
-    def _best_load_into_base(base, state):
-        strategies = []
-        strategies.append(("as-is", state))
-        strategies.append(("strip-mm", _strip_prefixes(state, ["module.model.", "module.", "model."])))
-        strategies.append(("strip-m", _strip_prefixes(state, ["module.", "model."])))
-        strategies.append(("strip-model", _strip_prefixes(state, ["model."])))
 
-        best = None
+    def _best_load_into_base(base, state):
+        """
+        base: 실제 모델 모듈 (ex. FullModel 내부의 base model)
+        state: checkpoint state_dict (as-is).  {'state_dict': ...} 형태여도 처리함.
+
+        - 여러 prefix 제거 전략을 시도해 가장 'missing 키 수'가 적은 로드를 선택
+        - 최종 적용 후 로드 퍼센트([Info] Loaded X/Y (...%))를 함께 출력
+        반환: (missing_keys, unexpected_keys)
+        """
+        # ckpt가 {'state_dict': ...} 형태로 저장된 경우 보정
+        if isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+
+        strategies = [
+            ("as-is",        state),
+            ("strip-mm",     _strip_prefixes(state, ["module.model.", "module.", "model."])),
+            ("strip-m",      _strip_prefixes(state, ["module.", "model."])),
+            ("strip-model",  _strip_prefixes(state, ["model."])),
+        ]
+
+        best_name = None
+        best_sd = None
         best_missing = None
         best_unexpected = None
-        best_name = None
+        best_loaded_ratio = -1.0
 
+        # 우선 평가(실제 적용은 strict=False로 '가상 로드' → 최종 한 번 더 로드)
         for name, sd_try in strategies:
             try:
                 missing, unexpected = base.load_state_dict(sd_try, strict=False)
+
                 miss_n = len(missing)
-                if best is None or miss_n < len(best_missing):
-                    best = sd_try
+                # 로드된 키 비율(이름 일치 기준)도 보조 척도로 사용
+                model_keys = set(base.state_dict().keys())
+                state_keys = set(sd_try.keys())
+                loaded = len(model_keys & state_keys)
+                total = len(model_keys)
+                ratio = (loaded / total) if total > 0 else 0.0
+
+                if (best_missing is None) or (miss_n < len(best_missing)) or \
+                (miss_n == len(best_missing) and ratio > best_loaded_ratio):
+                    best_name = name
+                    best_sd = sd_try
                     best_missing = missing
                     best_unexpected = unexpected
-                    best_name = name
-                base.load_state_dict(base.state_dict())
+                    best_loaded_ratio = ratio
             except Exception:
+                # 시도 실패 전략은 건너뜀
                 continue
 
-        if best is not None:
-            missing, unexpected = base.load_state_dict(best, strict=False)
-            if local_rank == 0:
-                print(f"[Resume] load strategy: {best_name} | missing={len(missing)}, unexpected={len(unexpected)}")
-            return missing, unexpected
-        missing, unexpected = base.load_state_dict(state, strict=False)
-        if local_rank == 0:
+        # 최종 적용
+        if best_sd is None:
+            # 모든 전략 실패 시 as-is로 시도
+            missing, unexpected = base.load_state_dict(state, strict=False)
+            model_keys = set(base.state_dict().keys())
+            state_keys = set(state.keys()) if isinstance(state, dict) else set()
+            loaded = len(model_keys & state_keys)
+            total = len(model_keys)
             print(f"[Resume] load strategy: fallback-as-is | missing={len(missing)}, unexpected={len(unexpected)}")
+            print(f"[Info] Loaded {loaded}/{total} state_dict entries ({100.0 * (loaded / max(total, 1)):.2f}%) from checkpoint.")
+            return missing, unexpected
+
+        # 베스트 전략으로 실제 재적용(가중치 확정)
+        missing, unexpected = base.load_state_dict(best_sd, strict=False)
+
+        model_keys = set(base.state_dict().keys())
+        state_keys = set(best_sd.keys())
+        loaded = len(model_keys & state_keys)
+        total = len(model_keys)
+
+        print(f"[Resume] load strategy: {best_name} | missing={len(missing)}, unexpected={len(unexpected)}")
+        if missing:
+            print(f"[Resume] Missing keys (first 10): {list(missing)[:10]}")
+        if unexpected:
+            print(f"[Resume] Unexpected keys (first 10): {list(unexpected)[:10]}")
+        print(f"[Info] Loaded {loaded}/{total} state_dict entries ({100.0 * (loaded / max(total, 1)):.2f}%) from checkpoint.")
+
         return missing, unexpected
+
 
     def _load_model_state(m, state):
         target = m  # FullModel (no DDP)
