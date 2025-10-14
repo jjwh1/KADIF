@@ -267,7 +267,9 @@ def train(args):
 
     if args.resume is not None and os.path.isfile(args.resume):
         map_location = device
-        ckpt = torch.load(args.resume, map_location=map_location)
+        # ckpt = torch.load(args.resume, map_location=map_location)
+        ckpt = torch.load(args.resume, map_location=map_location, weights_only=False)
+
         if _is_full_checkpoint(ckpt):
             _load_model_state(model, ckpt["model"])
             if "optimizer" in ckpt:
