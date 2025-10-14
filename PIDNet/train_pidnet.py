@@ -97,7 +97,12 @@ def train(args):
     
     # Model
     print(f"[Single GPU] Before model setup")
-    model_base = models.pidnet.get_seg_model(num_classes=args.num_classes, load_path=args.loadpath)
+    # model_base = models.pidnet.get_seg_model(num_classes=args.num_classes, load_path=args.loadpath)
+    if args.loadpath is not None:
+        model_base = models.pidnet.get_seg_model(num_classes=args.num_classes, load_path=args.loadpath)
+    else:
+        model_base = models.pidnet.get_seg_model(num_classes=args.num_classes)
+
     model = FullModel(model_base, criterion, bd_criterion).to(device)
     # model = DDP(model, device_ids=[local_rank])
     print(f"[Single GPU] Model initialized")
