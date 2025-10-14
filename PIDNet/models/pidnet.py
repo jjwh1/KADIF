@@ -197,31 +197,54 @@ def get_seg_model(num_classes, load_path):
     # if imgnet_pretrained:
     #     pretrained_state = torch.load(cfg.MODEL.PRETRAINED, map_location='cpu')['state_dict'] 
     
-    if load_path:
-        pretrained_state = torch.load(load_path, map_location='cpu')['state_dict'] 
-        model_dict = model.state_dict()
-        pretrained_state = {k: v for k, v in pretrained_state.items() if (k in model_dict and v.shape == model_dict[k].shape)}
-        model_dict.update(pretrained_state)
-        msg = 'Loaded {} parameters!'.format(len(pretrained_state))
-        logging.info('Attention!!!')
-        logging.info(msg)
-        logging.info('Over!!!')
-        model.load_state_dict(model_dict, strict = False)
-    else:
-        # pretrained_dict = torch.load(cfg.MODEL.PRETRAINED, map_location='cpu')
+    # if load_path:
+    #     pretrained_state = torch.load(load_path, map_location='cpu')['state_dict'] 
+    #     model_dict = model.state_dict()
+    #     pretrained_state = {k: v for k, v in pretrained_state.items() if (k in model_dict and v.shape == model_dict[k].shape)}
+    #     model_dict.update(pretrained_state)
+    #     msg = 'Loaded {} parameters!'.format(len(pretrained_state))
+    #     logging.info('Attention!!!')
+    #     logging.info(msg)
+    #     logging.info('Over!!!')
+    #     model.load_state_dict(model_dict, strict = False)
+    # else:
+    #     # pretrained_dict = torch.load(cfg.MODEL.PRETRAINED, map_location='cpu')
         
-        pretrained_dict = torch.load(load_path, map_location='cpu')
-        if 'state_dict' in pretrained_dict:
-            pretrained_dict = pretrained_dict['state_dict']
-        model_dict = model.state_dict()
-        pretrained_dict = {k[6:]: v for k, v in pretrained_dict.items() if (k[6:] in model_dict and v.shape == model_dict[k[6:]].shape)}
-        msg = 'Loaded {} parameters!'.format(len(pretrained_dict))
-        logging.info('Attention!!!')
-        logging.info(msg)
-        logging.info('Over!!!')
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(model_dict, strict = False)
+    #     pretrained_dict = torch.load(load_path, map_location='cpu')
+    #     if 'state_dict' in pretrained_dict:
+    #         pretrained_dict = pretrained_dict['state_dict']
+    #     model_dict = model.state_dict()
+    #     pretrained_dict = {k[6:]: v for k, v in pretrained_dict.items() if (k[6:] in model_dict and v.shape == model_dict[k[6:]].shape)}
+    #     msg = 'Loaded {} parameters!'.format(len(pretrained_dict))
+    #     logging.info('Attention!!!')
+    #     logging.info(msg)
+    #     logging.info('Over!!!')
+    #     model_dict.update(pretrained_dict)
+    #     model.load_state_dict(model_dict, strict = False)
     
+    # return model
+    if load_path is not None:
+        print(f"[Info] Loading pretrained weights from: {load_path}")
+        ckpt = torch.load(load_path, map_location='cpu')
+
+        # state_dict 키가 있으면 추출
+        if 'state_dict' in ckpt:
+            ckpt = ckpt['state_dict']
+
+        model_dict = model.state_dict()
+
+        # 키 이름 및 shape이 일치하는 것만 필터링
+        pretrained_state = {k: v for k, v in ckpt.items()
+                            if (k in model_dict and v.shape == model_dict[k].shape)}
+
+        # 업데이트 및 로드
+        model_dict.update(pretrained_state)
+        model.load_state_dict(model_dict, strict=False)
+
+        print(f"[Info] Loaded {len(pretrained_state)} / {len(model_dict)} parameters from checkpoint.")
+    else:
+        print("[Info] No pretrained weights loaded (load_path=None).")
+
     return model
 
 def get_pred_model(name, num_classes):
