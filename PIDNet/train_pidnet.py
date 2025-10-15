@@ -457,12 +457,12 @@ if __name__ == "__main__":
     parser.add_argument("--loadpath", type=str,  help="Path to dataset root", 
                     default=None)
     parser.add_argument("--resume", type=str,
-                        default="/content/drive/MyDrive/KADIF/result/PIDNet_s_1/last.pth.tar",
+                        default="/content/drive/MyDrive/KADIF/result/PIDNet_s_1_2/last.pth.tar",
                         help="통합 ckpt(.pth/.tar) 또는 가중치(.pth) 경로")
     parser.add_argument("--resume_epoch", type=int, default=None,
                         help="weights-only 재개 시 마지막 완료 epoch(1-index)")
     parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/PIDNet_s_1_2")
+    parser.add_argument("--result_dir", type=str, default="/content/drive/MyDrive/KADIF/result/PIDNet_s_1_3")
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_classes", type=int, default=19)
